@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Turn a website or download link into a QR code in your browser.">
 <title>QR Code Generator</title>
+<script>
+  const systemTheme = matchMedia("(prefers-color-scheme: dark)");
+  let themePreference;
+  try {
+    const savedTheme = localStorage.getItem("qr-theme");
+    if (savedTheme === "light" || savedTheme === "dark") themePreference = savedTheme;
+  } catch {
+    // Theme switching still works when storage is unavailable.
+  }
+
+  function applyTheme() {
+    document.documentElement.dataset.theme = themePreference ?? (systemTheme.matches ? "dark" : "light");
+  }
+
+  applyTheme();
+  systemTheme.addEventListener("change", applyTheme);
+</script>
 <style>
   :root {
     font: 16px/1.5 "Inter", system-ui, sans-serif;
@@ -14,10 +31,48 @@
     --border: #d2dfd8;
     --accent: #185747;
     --muted: #4f6860;
+    --surface: #fff;
+    --panel: #e9f3ed;
+    --preview: #f7fbf8;
+    --preview-border: #9ab2a5;
+    --input-border: #8ca39a;
+    --placeholder: #5d746c;
+    --focus: #277c67;
+    --error: #a02b26;
+    --button-text: #fff;
+    --button-hover: #113d33;
+    --surface-hover: #f5f8f4;
+    --shadow: #1736320d;
+  }
+  :root[data-theme="dark"] {
+    color: #e4f2ed;
+    background: #111d1b;
+    color-scheme: dark;
+    --border: #365049;
+    --accent: #9de1c9;
+    --muted: #b0c6be;
+    --surface: #192925;
+    --panel: #1d312c;
+    --preview: #152521;
+    --preview-border: #638178;
+    --input-border: #79958b;
+    --placeholder: #a0b9b0;
+    --focus: #9de1c9;
+    --error: #ffaba5;
+    --button-text: #142e26;
+    --button-hover: #bcf0de;
+    --surface-hover: #263d36;
+    --shadow: #0003;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; }
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    width: min(960px, calc(100% - 40px));
+    margin: 20px auto 0;
+  }
   main { width: min(960px, calc(100% - 40px)); margin: clamp(32px, 9vw, 112px) auto; }
   header { margin-bottom: 34px; }
   h1 { font-size: clamp(2.45rem, 6vw, 4.5rem); line-height: 1.02; letter-spacing: -.06em; margin: 0 0 16px; }
@@ -30,8 +85,8 @@
     border: 1px solid var(--border);
     border-radius: 24px;
     overflow: hidden;
-    background: #fff;
-    box-shadow: 0 12px 32px #1736320d;
+    background: var(--surface);
+    box-shadow: 0 12px 32px var(--shadow);
   }
   form, section { padding: clamp(20px, 4vw, 38px); }
   label { display: block; font-weight: 700; margin-bottom: 9px; }
@@ -39,15 +94,16 @@
   input {
     width: 100%;
     padding: 12px 14px;
-    border: 1px solid #8ca39a;
+    border: 1px solid var(--input-border);
     border-radius: 10px;
     color: inherit;
+    background: var(--surface);
   }
-  input::placeholder { color: #5d746c; }
-  :focus-visible { outline: 3px solid #277c67; outline-offset: 3px; }
-  input[aria-invalid="true"] { border-color: #a02b26; }
+  input::placeholder { color: var(--placeholder); }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  input[aria-invalid="true"] { border-color: var(--error); }
   .hint, .error { font-size: .9rem; margin: 10px 0 0; }
-  .error { color: #a02b26; }
+  .error { color: var(--error); }
   button, .download {
     display: inline-flex;
     justify-content: center;
@@ -59,24 +115,36 @@
     font-weight: 700;
     cursor: pointer;
   }
-  button { margin-top: 20px; background: var(--accent); color: #fff; }
-  button:hover { background: #113d33; }
-  section { background: #e9f3ed; border-left: 1px solid var(--border); }
+  button { margin-top: 20px; background: var(--accent); color: var(--button-text); }
+  button:hover { background: var(--button-hover); }
+  .theme-toggle {
+    width: 46px;
+    margin: 0;
+    padding: 0;
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--accent);
+  }
+  .theme-toggle:hover { background: var(--surface-hover); }
+  .theme-toggle svg { width: 22px; height: 22px; }
+  .theme-toggle .sun, [data-theme="dark"] .theme-toggle .moon { display: none; }
+  [data-theme="dark"] .theme-toggle .sun { display: block; }
+  section { background: var(--panel); border-left: 1px solid var(--border); }
   .preview {
     display: grid;
     place-items: center;
     width: min(100%, 290px);
     aspect-ratio: 1;
     margin: 16px auto;
-    border: 1px dashed #9ab2a5;
+    border: 1px dashed var(--preview-border);
     border-radius: 14px;
-    background: #f7fbf8;
+    background: var(--preview);
   }
   .preview:has(canvas:not([hidden])) { background: #fff; border-style: solid; overflow: hidden; }
   .empty { text-align: center; padding: 18px; margin: 0; }
   canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
-  .download { color: var(--accent); background: #fff; text-decoration: none; }
-  .download:hover { background: #f5f8f4; }
+  .download { color: var(--accent); background: var(--surface); text-decoration: none; }
+  .download:hover { background: var(--surface-hover); }
   .actions { text-align: center; }
   footer { margin-top: 18px; color: var(--muted); font-size: .875rem; }
   @media (max-width: 650px) {
@@ -86,6 +154,17 @@
 </style>
 </head>
 <body>
+<div class="toolbar">
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false">
+    <svg class="moon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M20.8 15.1A9 9 0 0 1 8.9 3.2 9 9 0 1 0 20.8 15.1Z"/>
+    </svg>
+    <svg class="sun" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/>
+    </svg>
+  </button>
+</div>
 <main>
   <header>
     <h1>QR Code Generator</h1>
@@ -1062,6 +1141,26 @@ var qrcodegen;
   const empty = document.querySelector("#empty");
   const canvas = document.querySelector("#qr");
   const download = document.querySelector("#download");
+  const themeToggle = document.querySelector("#theme-toggle");
+
+  function updateThemeToggle() {
+    const dark = document.documentElement.dataset.theme === "dark";
+    themeToggle.setAttribute("aria-pressed", String(dark));
+    themeToggle.title = dark ? "Switch to light mode" : "Switch to dark mode";
+  }
+
+  updateThemeToggle();
+  systemTheme.addEventListener("change", updateThemeToggle);
+  themeToggle.addEventListener("click", () => {
+    themePreference = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme();
+    updateThemeToggle();
+    try {
+      localStorage.setItem("qr-theme", themePreference);
+    } catch {
+      // Keep the selected theme for this page when storage is unavailable.
+    }
+  });
 
   function reset() {
     input.removeAttribute("aria-invalid");
